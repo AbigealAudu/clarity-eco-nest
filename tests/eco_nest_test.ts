@@ -30,53 +30,45 @@ Clarinet.test({
 });
 
 Clarinet.test({
-  name: "Cannot post tip with invalid category",
+  name: "Cannot post empty content",
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const wallet1 = accounts.get('wallet_1')!;
     
     let block = chain.mineBlock([
       Tx.contractCall('eco-nest', 'post-tip', [
-        types.ascii("Invalid"),
-        types.utf8("Test"),
-        types.uint(10)
-      ], wallet1.address)
-    ]);
-    
-    block.receipts[0].result.expectErr().expectUint(100);
-  }
-});
-
-Clarinet.test({
-  name: "Can vote on tip only once",
-  async fn(chain: Chain, accounts: Map<string, Account>) {
-    const wallet1 = accounts.get('wallet_1')!;
-    const wallet2 = accounts.get('wallet_2')!;
-    
-    // Post tip
-    let block = chain.mineBlock([
-      Tx.contractCall('eco-nest', 'post-tip', [
-        types.ascii("Test Tip"),
-        types.utf8("Content"),
+        types.ascii("Test"),
+        types.utf8(""),
         types.uint(1)
       ], wallet1.address)
     ]);
     
-    // First vote succeeds
-    block = chain.mineBlock([
-      Tx.contractCall('eco-nest', 'vote-tip', [
-        types.uint(1),
-        types.bool(true)
-      ], wallet2.address)
-    ]);
-    block.receipts[0].result.expectOk().expectBool(true);
+    block.receipts[0].result.expectErr().expectUint(101);
+  }
+});
+
+Clarinet.test({
+  name: "Cannot post tips too frequently",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    const wallet1 = accounts.get('wallet_1')!;
     
-    // Second vote fails
-    block = chain.mineBlock([
-      Tx.contractCall('eco-nest', 'vote-tip', [
-        types.uint(1),
-        types.bool(true)
-      ], wallet2.address)
+    // First post succeeds
+    let block = chain.mineBlock([
+      Tx.contractCall('eco-nest', 'post-tip', [
+        types.ascii("Test 1"),
+        types.utf8("Content 1"),
+        types.uint(1)
+      ], wallet1.address)
     ]);
-    block.receipts[0].result.expectErr().expectUint(401);
+    
+    // Second immediate post fails
+    block = chain.mineBlock([
+      Tx.contractCall('eco-nest', 'post-tip', [
+        types.ascii("Test 2"),
+        types.utf8("Content 2"),
+        types.uint(1)
+      ], wallet1.address)
+    ]);
+    
+    block.receipts[0].result.expectErr().expectUint(102);
   }
 });
